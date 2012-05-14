@@ -61,6 +61,10 @@ public class ComponentDescriptionContainer {
 
 	
 	public ComponentDescriptionContainer(ComponentDescription[] cdList) {
+		this.addComponentDescriptions(cdList);
+	}
+
+	public void addComponentDescriptions(ComponentDescription[] cdList) {
 		for(ComponentDescription desc : cdList){
 			this.componentDescriptionList.add(desc);
 		}

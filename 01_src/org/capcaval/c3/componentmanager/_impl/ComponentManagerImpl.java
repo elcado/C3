@@ -97,6 +97,35 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		
 		return this.cdc.toString();
 	}
+	
+	@Override
+	public String startNewComponents(Class<? extends Component>... componentType) {
+		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
+		for (Class<? extends Component> cmptType : componentType)
+			newComponentImplTypeList.add(cmptType);
+		
+		// discover all the new components
+		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
+
+		// add descriptions to the container
+		this.cdc.addComponentDescriptions(cdList);
+
+		// allocate one instance of each component and keep in ref the overall description
+		this.allocateComponents(this.cdc, cdList);
+
+		// set all the automatic links
+		this.assembleWireToAllComponents(cdc, cdList);
+
+		// activate them all
+		this.startComponents(cdList);
+
+		// get description string
+		StringBuffer str = new StringBuffer();
+		for(ComponentDescription desc : cdList)
+			str.append(desc.toString());
+		
+		return str.toString();
+}
 
 	@Override
 	public void startComponents(ComponentDescription[] cdList) {
@@ -338,12 +367,16 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 	@Override
 	public ComponentDescription[] discoverAllComponents() {
+		return this.discoverComponents(this.componentImplTypeList);
+	}
+	
+	private ComponentDescription[] discoverComponents(List<Class<? extends Component>> componentImplTypeList) {
 
 		ComponentDescriptionFactory fdf = ComponentDescriptionFactory.factory;
 
 		List<ComponentDescription> cdList = new ArrayList<ComponentDescription>();
 
-		for (Class<?> cmpnClass : this.componentImplTypeList) {
+		for (Class<?> cmpnClass : componentImplTypeList) {
 			
 			this.discoverComponentImpl(cmpnClass,cdList, fdf, 0);
 			
@@ -436,6 +469,18 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		// allocate a new instance for all component descriptions
 		ComponentDescriptionContainer cdc = new ComponentDescriptionContainer(cdList);
 		
+		return this.allocateComponents(cdc, cdList);
+	}		
+
+	private ComponentDescriptionContainer allocateComponents(ComponentDescriptionContainer cdc, ComponentDescription[] cdList){
+		if (cdc == null) {
+			// build the error message
+			StringBuffer errorMessage = new StringBuffer();
+			errorMessage.append("C³ ERROR : Component description container instance cannot be found, in order to allocate new component towards the existing ones\n");
+
+			throw new RuntimeException(errorMessage.toString());
+		}
+
 		// create a hashmap to store all service and events
 		Map<Class<?>, Object> cmpInstanceList = new HashMap<Class<?>, Object>();
 

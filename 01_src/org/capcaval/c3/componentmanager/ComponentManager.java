@@ -56,6 +56,9 @@ public interface ComponentManager {
 	 * @return
 	 */
 	public String startApplication();
+	
+	public String startNewComponents(Class<? extends Component>... componentType);
+	
 	/**
 	 * @param componentTypeList
 	 * @return
