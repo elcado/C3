@@ -84,6 +84,7 @@ public interface ComponentDescription {
 	public void addSubComponent(SubComponentDescription desc);
 
 	public void setComponentLevel(int componentLevel);
+	public int getComponentLevel();
 
 	public void addItem(ComponentItemDescription itemDesc);
 
@@ -91,6 +92,9 @@ public interface ComponentDescription {
 
 	public void addProvidedServices(
 			Class<? extends ComponentService> serviceType, Class<?> cmpnClass);
+
+	public void setComponentIdentifier(String id);
+	public String getComponentIdentifier();
 
 
 

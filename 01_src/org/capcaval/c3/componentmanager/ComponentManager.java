@@ -50,6 +50,8 @@ public interface ComponentManager {
 	 * @return
 	 */
 	public <T extends ComponentService> T getComponentService(Class<T> componentType);
+	public <T extends ComponentService> T getGenericComponentService(Class<T> componentType, String id);
+	
 	public <T extends ComponentEvent> ComponentEventSubscribe<T> getComponentEventSubscribe(Class<T> eventType);
 	
 	/**
@@ -57,7 +59,15 @@ public interface ComponentManager {
 	 */
 	public String startApplication();
 	
-	public String startNewComponents(Class<? extends Component>... componentType);
+	/**
+	 * Start a new component 
+	 */
+	public String startNewComponent(Class<? extends Component> componentType);
+	
+	/**
+	 * Start a new component with supplied identifier
+	 */
+	public String startNewGenericComponent(Class<? extends Component> componentType, String id);
 	
 	/**
 	 * @param componentTypeList

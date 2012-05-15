@@ -82,6 +82,13 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 
 	@Override
+	public <T extends ComponentService> T getGenericComponentService(
+			Class<T> componentServiceType, String id) {
+
+		return (T) this.cdc.getServiceInstance(componentServiceType, id);
+	}
+
+	@Override
 	public String startApplication() {
 		// discover all the component
 		ComponentDescription[] cdList = this.discoverAllComponents();
@@ -99,10 +106,9 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 	
 	@Override
-	public String startNewComponents(Class<? extends Component>... componentType) {
+	public String startNewComponent(Class<? extends Component> componentType) {
 		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
-		for (Class<? extends Component> cmptType : componentType)
-			newComponentImplTypeList.add(cmptType);
+		newComponentImplTypeList.add(componentType);
 		
 		// discover all the new components
 		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
@@ -125,7 +131,40 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 			str.append(desc.toString());
 		
 		return str.toString();
-}
+	}
+
+	@Override
+	public String startNewGenericComponent(Class<? extends Component> componentType, String id) {
+		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
+		newComponentImplTypeList.add(componentType);
+		
+		// discover all the new components
+		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
+
+		for (ComponentDescription componentDescription : cdList) {
+			if (componentDescription.getComponentLevel() == 1)
+				componentDescription.setComponentIdentifier(id);
+		}
+		
+		// add descriptions to the container
+		this.cdc.addComponentDescriptions(cdList);
+
+		// allocate one instance of each component and keep in ref the overall description
+		this.allocateComponents(this.cdc, cdList);
+
+		// set all the automatic links
+		this.assembleWireToAllComponents(cdc, cdList);
+
+		// activate them all
+		this.startComponents(cdList);
+
+		// get description string
+		StringBuffer str = new StringBuffer();
+		for(ComponentDescription desc : cdList)
+			str.append(desc.toString());
+		
+		return str.toString();
+	}
 
 	@Override
 	public void startComponents(ComponentDescription[] cdList) {
@@ -513,7 +552,8 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 					
 					cdc.registerService(
 							serviceType, 
-							serviceInstance);
+							serviceInstance,
+							cDesc.getComponentIdentifier());
 				}
 				// register the instance for all provided events
 				for (Class<? extends ComponentEvent> eventType : cDesc.getProvidedEventList()) {
