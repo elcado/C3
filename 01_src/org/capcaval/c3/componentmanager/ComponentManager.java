@@ -63,17 +63,16 @@ public interface ComponentManager {
 	 * Allocate, wire and activate the supplied component.
 	 * 
 	 * @throws InstantiationError
-	 *             if the component implements services that have already been
-	 *             activated
+	 *             if the component has already been activated
 	 */
 	public String activateComponent(Class<? extends Component> componentType) throws InstantiationError;
 	
 	/**
 	 * Allocate, wire and activate the supplied component <i>with the supplied
-	 * id</i>. The id is only used for service-oriented component, to allow
-	 * another component to get a specific instance implementing a common
-	 * service contract. Therefore, the id has to be unique for a given
-	 * component service contract.
+	 * id</i>. This functionality is <i>only available</i> for service-oriented
+	 * component, to allow another component to get a specific instance
+	 * implementing a common service contract. Therefore, the id has to be
+	 * unique for a given component service contract instance.
 	 * 
 	 * @throws InstantiationError
 	 *             if the component implements services that have already been

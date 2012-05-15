@@ -125,28 +125,50 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 				componentDescription.setComponentIdentifier(id);
 		}
 		
-		// check that id is unique for the (eventual) component's provided services
-		for (ComponentDescription cDesc : cdList) {
-			for (Pair<?,?> serviceDesc : cDesc.getProvidedServiceList()) {
-				Class<? extends ComponentService> componentService = (Class<? extends ComponentService>) serviceDesc.firstItem();
+		// if id is null
+		if (id == null) {
+			// check that no previous instance of the component type exists
+			if (this.cdc.getComponentInstance(componentType) != null) {
+				// build the error message
+				StringBuffer errorMessage = new StringBuffer();
+				errorMessage.append("C³ ERROR : Re-allocation of a component is not allowed (you might use different identifiers for different instances)\n");
+				errorMessage.append("   -->  A new component instance implementing: (" + componentType.getName() +  ") has been requested\n");
 				
-				// throws an error if this component services interface is already activated with this id
-				ComponentService componentServiceInstance = this.getComponentService(componentService, id);
-				if (componentServiceInstance != null) {
-					// build the error message
-					StringBuffer errorMessage = new StringBuffer();
-					if (id == null) {
-						errorMessage.append("C³ ERROR : Re-allocation of a component is not allowed (you might use different identifiers for different instances)\n");
-						errorMessage.append("   -->  A new component instance implementing: (" + componentService.getName() +  ") has been requested\n");
-						errorMessage.append("   -->  Implementation: (" + componentServiceInstance.getClass().getName() + ") already implements it\n");
-					}
-					else {
+				throw new InstantiationError(errorMessage.toString());
+			}
+		}
+		// if id is not null
+		else if (id != null) {
+			// 1- check that the component has some services
+			int serviceListLength = 0;
+			for (ComponentDescription cDesc : cdList)
+				serviceListLength += cDesc.getProvidedServiceList().length;
+
+			if (serviceListLength == 0) {
+				// build the error message
+				StringBuffer errorMessage = new StringBuffer();
+				errorMessage.append("C³ ERROR : Allocation of an identified component that doesn't implement any service contract is not allowed\n");
+				errorMessage.append("   -->  Implementation: (" + componentType.getName() + ") doesn't implement any service contract\n");
+				
+				throw new InstantiationError(errorMessage.toString());
+			}
+			
+			// 2- check that id is unique for the (eventual) component's provided services
+			for (ComponentDescription cDesc : cdList) {
+				for (Pair<?,?> serviceDesc : cDesc.getProvidedServiceList()) {
+					Class<? extends ComponentService> componentService = (Class<? extends ComponentService>) serviceDesc.firstItem();
+					
+					// throws an error if this component services interface is already activated with this id
+					ComponentService componentServiceInstance = this.getComponentService(componentService, id);
+					if (componentServiceInstance != null) {
+						// build the error message
+						StringBuffer errorMessage = new StringBuffer();
 						errorMessage.append("C³ ERROR : Re-allocation of a component with the same id is not allowed\n");
 						errorMessage.append("   -->  A new component instance implementing: (" + componentService.getName() +  ") has been requested with id \"" + id + "\"\n");
 						errorMessage.append("   -->  Implementation: (" + componentServiceInstance.getClass().getName() + ") already implements it with id \"" + id + "\"\n");
+						
+						throw new InstantiationError(errorMessage.toString());
 					}
-					
-					throw new InstantiationError(errorMessage.toString());
 				}
 			}
 		}
