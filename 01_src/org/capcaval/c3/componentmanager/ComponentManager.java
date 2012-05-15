@@ -50,7 +50,7 @@ public interface ComponentManager {
 	 * @return
 	 */
 	public <T extends ComponentService> T getComponentService(Class<T> componentType);
-	public <T extends ComponentService> T getGenericComponentService(Class<T> componentType, String id);
+	public <T extends ComponentService> T getComponentService(Class<T> componentType, String id);
 	
 	public <T extends ComponentEvent> ComponentEventSubscribe<T> getComponentEventSubscribe(Class<T> eventType);
 	
@@ -60,14 +60,26 @@ public interface ComponentManager {
 	public String startApplication();
 	
 	/**
-	 * Start a new component 
+	 * Allocate, wire and activate the supplied component.
+	 * 
+	 * @throws InstantiationError
+	 *             if the component implements services that have already been
+	 *             activated
 	 */
-	public String startNewComponent(Class<? extends Component> componentType);
+	public String activateComponent(Class<? extends Component> componentType) throws InstantiationError;
 	
 	/**
-	 * Start a new component with supplied identifier
+	 * Allocate, wire and activate the supplied component <i>with the supplied
+	 * id</i>. The id is only used for service-oriented component, to allow
+	 * another component to get a specific instance implementing a common
+	 * service contract. Therefore, the id has to be unique for a given
+	 * component service contract.
+	 * 
+	 * @throws InstantiationError
+	 *             if the component implements services that have already been
+	 *             activated with the same id
 	 */
-	public String startNewGenericComponent(Class<? extends Component> componentType, String id);
+	public String activateComponent(Class<? extends Component> componentType, String id) throws InstantiationError;
 	
 	/**
 	 * @param componentTypeList

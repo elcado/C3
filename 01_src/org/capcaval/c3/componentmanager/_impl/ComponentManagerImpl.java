@@ -82,7 +82,7 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 
 	@Override
-	public <T extends ComponentService> T getGenericComponentService(
+	public <T extends ComponentService> T getComponentService(
 			Class<T> componentServiceType, String id) {
 
 		return (T) this.cdc.getServiceInstance(componentServiceType, id);
@@ -106,44 +106,49 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 	
 	@Override
-	public String startNewComponent(Class<? extends Component> componentType) {
-		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
-		newComponentImplTypeList.add(componentType);
-		
-		// discover all the new components
-		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
-
-		// add descriptions to the container
-		this.cdc.addComponentDescriptions(cdList);
-
-		// allocate one instance of each component and keep in ref the overall description
-		this.allocateComponents(this.cdc, cdList);
-
-		// set all the automatic links
-		this.assembleWireToAllComponents(cdc, cdList);
-
-		// activate them all
-		this.startComponents(cdList);
-
-		// get description string
-		StringBuffer str = new StringBuffer();
-		for(ComponentDescription desc : cdList)
-			str.append(desc.toString());
-		
-		return str.toString();
+	public String activateComponent(Class<? extends Component> componentType) throws InstantiationError {
+		return this.activateComponent(componentType, null);
 	}
 
 	@Override
-	public String startNewGenericComponent(Class<? extends Component> componentType, String id) {
+	public String activateComponent(Class<? extends Component> componentType, String id) throws InstantiationError {
 		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
 		newComponentImplTypeList.add(componentType);
 		
 		// discover all the new components
 		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
 
+		// set component id
 		for (ComponentDescription componentDescription : cdList) {
+			// the id is only for the main component (not its sub-components)
 			if (componentDescription.getComponentLevel() == 1)
 				componentDescription.setComponentIdentifier(id);
+		}
+		
+		// check that id is unique for the (eventual) component's provided services
+		for (ComponentDescription cDesc : cdList) {
+			for (Pair<?,?> serviceDesc : cDesc.getProvidedServiceList()) {
+				Class<? extends ComponentService> componentService = (Class<? extends ComponentService>) serviceDesc.firstItem();
+				
+				// throws an error if this component services interface is already activated with this id
+				ComponentService componentServiceInstance = this.getComponentService(componentService, id);
+				if (componentServiceInstance != null) {
+					// build the error message
+					StringBuffer errorMessage = new StringBuffer();
+					if (id == null) {
+						errorMessage.append("C³ ERROR : Re-allocation of a component is not allowed (you might use different identifiers for different instances)\n");
+						errorMessage.append("   -->  A new component instance implementing: (" + componentService.getName() +  ") has been requested\n");
+						errorMessage.append("   -->  Implementation: (" + componentServiceInstance.getClass().getName() + ") already implements it\n");
+					}
+					else {
+						errorMessage.append("C³ ERROR : Re-allocation of a component with the same id is not allowed\n");
+						errorMessage.append("   -->  A new component instance implementing: (" + componentService.getName() +  ") has been requested with id \"" + id + "\"\n");
+						errorMessage.append("   -->  Implementation: (" + componentServiceInstance.getClass().getName() + ") already implements it with id \"" + id + "\"\n");
+					}
+					
+					throw new InstantiationError(errorMessage.toString());
+				}
+			}
 		}
 		
 		// add descriptions to the container
