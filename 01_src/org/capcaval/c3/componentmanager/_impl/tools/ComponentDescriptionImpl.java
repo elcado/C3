@@ -37,6 +37,7 @@ import org.capcaval.tools.pair.PairImpl;
 
 public class ComponentDescriptionImpl implements ComponentDescription {
 
+	protected String componentIdentifier;
 	protected String componentName;
 	protected int componentLevel;
 	protected Class<?> componentType;
@@ -249,6 +250,21 @@ public class ComponentDescriptionImpl implements ComponentDescription {
 		
 	}
 
+	@Override
+	public int getComponentLevel() {
+		return this.componentLevel;
+	}
+	
+	@Override
+	public void setComponentIdentifier(String id) {
+		this.componentIdentifier = id;
+	}
+	
+	@Override
+	public String getComponentIdentifier() {
+		return this.componentIdentifier;
+	}
+	
 	@Override
 	public SubComponentDescription[] getSubComponetList() {
 		return this.subComponentList.toArray(new SubComponentDescription[0]);

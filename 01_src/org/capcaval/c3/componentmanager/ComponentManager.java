@@ -50,12 +50,36 @@ public interface ComponentManager {
 	 * @return
 	 */
 	public <T extends ComponentService> T getComponentService(Class<T> componentType);
+	public <T extends ComponentService> T getComponentService(Class<T> componentType, String id);
+	
 	public <T extends ComponentEvent> ComponentEventSubscribe<T> getComponentEventSubscribe(Class<T> eventType);
 	
 	/**
 	 * @return
 	 */
 	public String startApplication();
+	
+	/**
+	 * Allocate, wire and activate the supplied component.
+	 * 
+	 * @throws InstantiationError
+	 *             if the component has already been activated
+	 */
+	public String activateComponent(Class<? extends Component> componentType) throws InstantiationError;
+	
+	/**
+	 * Allocate, wire and activate the supplied component <i>with the supplied
+	 * id</i>. This functionality is <i>only available</i> for service-oriented
+	 * component, to allow another component to get a specific instance
+	 * implementing a common service contract. Therefore, the id has to be
+	 * unique for a given component service contract instance.
+	 * 
+	 * @throws InstantiationError
+	 *             if the component implements services that have already been
+	 *             activated with the same id
+	 */
+	public String activateComponent(Class<? extends Component> componentType, String id) throws InstantiationError;
+	
 	/**
 	 * @param componentTypeList
 	 * @return
