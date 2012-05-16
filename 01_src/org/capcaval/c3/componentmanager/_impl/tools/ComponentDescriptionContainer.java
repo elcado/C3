@@ -38,7 +38,7 @@ public class ComponentDescriptionContainer {
 	// contains all the root instances for each component 
 	Map<Class<?>,Component> instanceMap = new IdentityHashMap<Class<?>,Component>();
 	// contains all the instances of implementation of service
-	Map<Class<? extends ComponentService>,ComponentService> servicesMap = new IdentityHashMap<Class<? extends ComponentService>,ComponentService>();
+	Map<Class<? extends ComponentService>,Map<String,ComponentService>> servicesMap = new IdentityHashMap<Class<? extends ComponentService>,Map<String,ComponentService>>();
 	// contains all the instances of implementation of eventSubscribe
 	Map<Class<? extends ComponentEvent>,ComponentEventSubscribe<?>> eventSubscribeMap = new IdentityHashMap<Class<? extends ComponentEvent>,ComponentEventSubscribe<?>>();
 	// contains all the instances of implementation of event
@@ -48,7 +48,7 @@ public class ComponentDescriptionContainer {
 	// contains all the instances of implementations of items
 	Map<Class<?>, Object> itemInstanceMap = new HashMap<Class<?>, Object>();
 
-	public Map<Class<? extends ComponentService>, ComponentService> getServicesMap() {
+	public Map<Class<? extends ComponentService>, Map<String,ComponentService>> getServicesMap() {
 		return servicesMap;
 	}
 
@@ -61,6 +61,10 @@ public class ComponentDescriptionContainer {
 
 	
 	public ComponentDescriptionContainer(ComponentDescription[] cdList) {
+		this.addComponentDescriptions(cdList);
+	}
+
+	public void addComponentDescriptions(ComponentDescription[] cdList) {
 		for(ComponentDescription desc : cdList){
 			this.componentDescriptionList.add(desc);
 		}
@@ -68,8 +72,12 @@ public class ComponentDescriptionContainer {
 
 	public void registerService(
 			Class<? extends ComponentService> serviceType,
-			ComponentService instance){
-		this.servicesMap.put(serviceType, instance);
+			ComponentService instance, String instanceId){
+		
+		if (this.servicesMap.get(serviceType) == null)
+			this.servicesMap.put(serviceType, new HashMap<String,ComponentService>());
+		
+		this.servicesMap.get(serviceType).put(instanceId, instance);
 	}
 	
 	public void registerEventSubscribe(
@@ -79,7 +87,14 @@ public class ComponentDescriptionContainer {
 	}
 	
 	public ComponentService getServiceInstance(Class<? extends ComponentService> serviceType){
-		return this.servicesMap.get(serviceType);
+		return this.getServiceInstance(serviceType, null);
+	}
+	
+	public ComponentService getServiceInstance(Class<? extends ComponentService> serviceType, String instanceId){
+		if (this.servicesMap.get(serviceType) == null)
+			return null;
+			
+		return this.servicesMap.get(serviceType).get(instanceId);
 	}
 	
 	public ComponentEventSubscribe<?> getEventSubscribeInstance(Class<? extends ComponentEvent> eventType){

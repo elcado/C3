@@ -82,6 +82,13 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 
 	@Override
+	public <T extends ComponentService> T getComponentService(
+			Class<T> componentServiceType, String id) {
+
+		return (T) this.cdc.getServiceInstance(componentServiceType, id);
+	}
+
+	@Override
 	public String startApplication() {
 		// discover all the component
 		ComponentDescription[] cdList = this.discoverAllComponents();
@@ -96,6 +103,94 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		this.startComponents(cdList);
 		
 		return this.cdc.toString();
+	}
+	
+	@Override
+	public String activateComponent(Class<? extends Component> componentType) throws InstantiationError {
+		return this.activateComponent(componentType, null);
+	}
+
+	@Override
+	public String activateComponent(Class<? extends Component> componentType, String id) throws InstantiationError {
+		List<Class<? extends Component>> newComponentImplTypeList = new ArrayList<Class<? extends Component>>();
+		newComponentImplTypeList.add(componentType);
+		
+		// discover all the new components
+		ComponentDescription[] cdList = this.discoverComponents(newComponentImplTypeList);
+
+		// set component id
+		for (ComponentDescription componentDescription : cdList) {
+			// the id is only for the main component (not its sub-components)
+			if (componentDescription.getComponentLevel() == 1)
+				componentDescription.setComponentIdentifier(id);
+		}
+		
+		// if id is null
+		if (id == null) {
+			// check that no previous instance of the component type exists
+			if (this.cdc.getComponentInstance(componentType) != null) {
+				// build the error message
+				StringBuffer errorMessage = new StringBuffer();
+				errorMessage.append("C³ ERROR : Re-allocation of a component is not allowed (you might use different identifiers for different instances)\n");
+				errorMessage.append("   -->  A new component instance implementing: (" + componentType.getName() +  ") has been requested\n");
+				
+				throw new InstantiationError(errorMessage.toString());
+			}
+		}
+		// if id is not null
+		else if (id != null) {
+			// 1- check that the component has some services
+			int serviceListLength = 0;
+			for (ComponentDescription cDesc : cdList)
+				serviceListLength += cDesc.getProvidedServiceList().length;
+
+			if (serviceListLength == 0) {
+				// build the error message
+				StringBuffer errorMessage = new StringBuffer();
+				errorMessage.append("C³ ERROR : Allocation of an identified component that doesn't implement any service contract is not allowed\n");
+				errorMessage.append("   -->  Implementation: (" + componentType.getName() + ") doesn't implement any service contract\n");
+				
+				throw new InstantiationError(errorMessage.toString());
+			}
+			
+			// 2- check that id is unique for the (eventual) component's provided services
+			for (ComponentDescription cDesc : cdList) {
+				for (Pair<?,?> serviceDesc : cDesc.getProvidedServiceList()) {
+					Class<? extends ComponentService> componentService = (Class<? extends ComponentService>) serviceDesc.firstItem();
+					
+					// throws an error if this component services interface is already activated with this id
+					ComponentService componentServiceInstance = this.getComponentService(componentService, id);
+					if (componentServiceInstance != null) {
+						// build the error message
+						StringBuffer errorMessage = new StringBuffer();
+						errorMessage.append("C³ ERROR : Re-allocation of a component with the same id is not allowed\n");
+						errorMessage.append("   -->  A new component instance implementing: (" + componentService.getName() +  ") has been requested with id \"" + id + "\"\n");
+						errorMessage.append("   -->  Implementation: (" + componentServiceInstance.getClass().getName() + ") already implements it with id \"" + id + "\"\n");
+						
+						throw new InstantiationError(errorMessage.toString());
+					}
+				}
+			}
+		}
+		
+		// add descriptions to the container
+		this.cdc.addComponentDescriptions(cdList);
+
+		// allocate one instance of each component and keep in ref the overall description
+		this.allocateComponents(this.cdc, cdList);
+
+		// set all the automatic links
+		this.assembleWireToAllComponents(cdc, cdList);
+
+		// activate them all
+		this.startComponents(cdList);
+
+		// get description string
+		StringBuffer str = new StringBuffer();
+		for(ComponentDescription desc : cdList)
+			str.append(desc.toString());
+		
+		return str.toString();
 	}
 
 	@Override
@@ -287,7 +382,7 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 			
 			// subscribe the event
 			// MLB event
-			//eventSubscribe.subscribe(eventInstance);  // (? extends ComponentEvent)
+			eventSubscribe.subscribe(eventInstance);  // (? extends ComponentEvent)
 		}
 		
 	}
@@ -338,12 +433,16 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 	@Override
 	public ComponentDescription[] discoverAllComponents() {
+		return this.discoverComponents(this.componentImplTypeList);
+	}
+	
+	private ComponentDescription[] discoverComponents(List<Class<? extends Component>> componentImplTypeList) {
 
 		ComponentDescriptionFactory fdf = ComponentDescriptionFactory.factory;
 
 		List<ComponentDescription> cdList = new ArrayList<ComponentDescription>();
 
-		for (Class<?> cmpnClass : this.componentImplTypeList) {
+		for (Class<?> cmpnClass : componentImplTypeList) {
 			
 			this.discoverComponentImpl(cmpnClass,cdList, fdf, 0);
 			
@@ -436,6 +535,18 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		// allocate a new instance for all component descriptions
 		ComponentDescriptionContainer cdc = new ComponentDescriptionContainer(cdList);
 		
+		return this.allocateComponents(cdc, cdList);
+	}		
+
+	private ComponentDescriptionContainer allocateComponents(ComponentDescriptionContainer cdc, ComponentDescription[] cdList){
+		if (cdc == null) {
+			// build the error message
+			StringBuffer errorMessage = new StringBuffer();
+			errorMessage.append("C³ ERROR : Component description container instance cannot be found, in order to allocate new component towards the existing ones\n");
+
+			throw new RuntimeException(errorMessage.toString());
+		}
+
 		// create a hashmap to store all service and events
 		Map<Class<?>, Object> cmpInstanceList = new HashMap<Class<?>, Object>();
 
@@ -468,12 +579,13 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 					
 					cdc.registerService(
 							serviceType, 
-							serviceInstance);
+							serviceInstance,
+							cDesc.getComponentIdentifier());
 				}
 				// register the instance for all provided events
 				for (Class<? extends ComponentEvent> eventType : cDesc.getProvidedEventList()) {
 					// inject the subscriber to the component
-					ComponentEventSubscribe<?> ces = this.injectEventSubscribe(instance, eventType);
+					ComponentEventSubscribe<?> ces = this.injectEventSubscribe(cdc, instance, eventType);
 					
 					// register it to componentManager
 					cdc.registerEventSubscribe(eventType, ces);
@@ -521,15 +633,12 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	}
 
 	private <T extends ComponentEvent> ComponentEventSubscribe<T> injectEventSubscribe(
-			Component instance, Class<T> eventType) {
+			ComponentDescriptionContainer cdc, Component instance, Class<T> eventType) {
 
 		Field field = this.getEventField(instance, eventType);
 
 		// get the event subscribe, create one if none already existing
-		//ComponentEventSubscribeImpl<T> ces = this.retrieveComponentEventSubscribe(eventType);
-		
-		// allocate one subscribe per event
-		ComponentEventSubscribeImpl<T>ces = new ComponentEventSubscribeImpl<T>();
+		ComponentEventSubscribeImpl<T> ces = this.retrieveComponentEventSubscribe(cdc, eventType);
 		
 		// allocate the proxy
 		ComponentEventSubscribe<T> cesProxy = (ComponentEventSubscribe<T>) Proxy
@@ -551,15 +660,14 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 	}
 
-	// TODO to be removed
 	private <T extends ComponentEvent> ComponentEventSubscribeImpl<T> retrieveComponentEventSubscribe(
-			Class<T> eventType) {
+			ComponentDescriptionContainer cdc, Class<T> eventType) {
 		
 		ComponentEventSubscribeImpl<T> ces = null;
 		
-		if(this.cdc != null){
+		if(cdc != null){
 			// TODO Cast à revoir !!!!!!!!!!!!!
-			ces = (ComponentEventSubscribeImpl<T>) this.cdc.getEventSubscribeInstance(eventType);}
+			ces = (ComponentEventSubscribeImpl<T>) cdc.getEventSubscribeInstance(eventType);}
 
 		// Lazy pattern on ComponentEventSubscribe
 		if (ces == null) {
