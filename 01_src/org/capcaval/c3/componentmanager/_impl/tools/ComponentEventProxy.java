@@ -23,6 +23,7 @@ package org.capcaval.c3.componentmanager._impl.tools;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.capcaval.c3.component.ComponentEvent;
@@ -39,8 +40,9 @@ public class ComponentEventProxy <T extends ComponentEvent> implements Invocatio
 	public Object invoke(Object proxy, Method method, Object[] args)
 			throws Throwable {
 		
-		// get the observer list
-		List<T> obsList = this.componentEventSubscribe.observerList;
+		// get the observer list copy (to allow new instantiated components
+		// to set themselves as listeners in the current list)
+		List<T> obsList = new ArrayList<T>(this.componentEventSubscribe.observerList);
 		
 		for( T obs : obsList){
 			// call all observers with the given event and parameters
