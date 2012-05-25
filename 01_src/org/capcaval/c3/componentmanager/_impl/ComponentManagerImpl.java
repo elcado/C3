@@ -23,6 +23,7 @@ package org.capcaval.c3.componentmanager._impl;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -479,7 +480,12 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 		// get all the services event etc..
 		this.seekComponentAbstractions(cmpnClass, cd);
-		
+
+		// seek super class if:
+		// 1/ it's a C³ component
+		// 2/ it is abstract (to forbidden hierarchy of instantiable components)
+		if (isSuperClassAnAbstractComponent(cmpnClass))
+			this.seekComponentAbstractions(cmpnClass.getSuperclass(), cd);
 		
 		// seek all component items
 		ComponentItemDescription[] cmpItemList = ComponentAnalyserTool.getComponentItemList(cmpnClass);
@@ -493,7 +499,13 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		cdList.add(cd);
 		
 	}
-
+	
+	private static boolean isSuperClassAnAbstractComponent(Class<?> cmpnClass) {
+		Class<?> superclass = cmpnClass.getSuperclass();
+		return (Component.class.isAssignableFrom(superclass))
+				&& (Modifier.isAbstract(superclass.getModifiers()));
+	}
+	
 	protected void seekComponentAbstractions(final Class<?> cmpnClass, final ComponentDescription cd){
 		// seek provided services
 		Class<? extends ComponentService>[] serviceList = ComponentAnalyserTool
@@ -680,9 +692,32 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 	protected Field getEventField(Component instance,
 			Class<? extends ComponentEvent> eventType) {
+		Class<? extends Component> clazz = instance.getClass();
+		
 		// retrieve the event attribute
-		Field[] fieldList = instance.getClass().getDeclaredFields();
+		Field[] fieldList = clazz.getDeclaredFields();
 
+		// seek instance fields
+		Field field = this.getEventField(fieldList, eventType);
+	
+		// if field has not been found, try to find it in an eventual abstract
+		// super class component
+		if((field == null) && (isSuperClassAnAbstractComponent(clazz))){
+			fieldList = clazz.getSuperclass().getDeclaredFields();
+			field = this.getEventField(fieldList, eventType);
+		}
+			
+		if(field == null){
+			System.out.println("field not found");
+		}
+	
+		return field;
+	}
+	
+	private Field getEventField(Field[] fieldList, Class<? extends ComponentEvent> eventType) {
+		if (fieldList.length == 0)
+			return null;
+		
 		Field field = null;
 		boolean isOver = false;
 		int index = 0;
@@ -697,11 +732,6 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 				field = null;
 			}
 		}
-		
-		if(field == null){
-			System.out.println("field not found");
-		}
-			
 		
 		return field;
 	}
