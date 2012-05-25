@@ -714,7 +714,7 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 
 	protected Field getEventField(Object instance,
 			Class<? extends ComponentEvent> eventType) {
-		Class<? extends Component> clazz = instance.getClass();
+		Class<?> clazz = instance.getClass();
 		
 		// retrieve the event attribute
 		Field[] fieldList = clazz.getDeclaredFields();
