@@ -21,12 +21,19 @@ THE SOFTWARE.
 */
 package test.componentitemtest.impl;
 
+import org.capcaval.c3.component.annotation.ProducedEvent;
+
+import test.componentitemtest.ComponentItemTestEvent;
 import test.componentitemtest.ComponentItemTestService2;
 
 public class ComponentItemImpl implements ComponentItemTestService2 {
+	@ProducedEvent
+	private ComponentItemTestEvent citEvent;
 
 	@Override
 	public String sayGoodBye() {
+		citEvent.notifyGoodBye();
+		
 		return "bye from item implementation";
 	}
 
