@@ -608,8 +608,24 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 					// set the method accessible
 					createEventMethod.setAccessible(true);
 					
+					// get the correct instance to build method instance
+					Object instanceForMethodInstance = null;
+					Class<?> methClass = createEventMethod.getDeclaringClass();
+					if (methClass.equals(instance.getClass()))
+						// found! we'll invoke the method on the component instance
+						instanceForMethodInstance = instance;
+					else {
+						for (ComponentItemDescription itemDesc : cDesc.getComponentItemList()) {
+							if (methClass.equals(itemDesc.getItemType())) {
+								// found! we'll invoke the method on the component item instance
+								instanceForMethodInstance = cdc.getItemInstance(itemDesc.getItemType());
+								break;
+							}
+						}
+					}
+					
 					// call the method to create the instance
-					ComponentEvent event = (ComponentEvent)createEventMethod.invoke(instance);
+					ComponentEvent event = (ComponentEvent)createEventMethod.invoke(instanceForMethodInstance);
 					
 					// keep it for subscrition later
 					cdc.registerEventInstance(createEventMethod, event);

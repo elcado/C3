@@ -21,6 +21,7 @@ THE SOFTWARE.
 */
 package test.componentitemtest.impl;
 
+import org.capcaval.c3.component.annotation.ConsumedEvent;
 import org.capcaval.c3.component.annotation.ProducedEvent;
 
 import test.componentitemtest.ComponentItemTestEvent;
@@ -29,6 +30,16 @@ import test.componentitemtest.ComponentItemTestService2;
 public class ComponentItemImpl implements ComponentItemTestService2 {
 	@ProducedEvent
 	private ComponentItemTestEvent citEvent;
+	
+	@ConsumedEvent
+	private ComponentItemTestEvent citEventHandlerFactory() {
+		return new ComponentItemTestEvent() {
+			@Override
+			public void notifyGoodBye() {
+				System.out.println("goona say goodbye...");
+			}
+		};
+	}
 
 	@Override
 	public String sayGoodBye() {
