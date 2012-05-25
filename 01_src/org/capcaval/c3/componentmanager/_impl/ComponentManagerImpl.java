@@ -611,12 +611,12 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 					// get the correct instance to build method instance
 					Object instanceForMethodInstance = null;
 					Class<?> methClass = createEventMethod.getDeclaringClass();
-					if (methClass.equals(instance.getClass()))
+					if (methClass.isAssignableFrom(instance.getClass()))
 						// found! we'll invoke the method on the component instance
 						instanceForMethodInstance = instance;
 					else {
 						for (ComponentItemDescription itemDesc : cDesc.getComponentItemList()) {
-							if (methClass.equals(itemDesc.getItemType())) {
+							if (methClass.isAssignableFrom(itemDesc.getItemType())) {
 								// found! we'll invoke the method on the component item instance
 								instanceForMethodInstance = cdc.getItemInstance(itemDesc.getItemType());
 								break;
