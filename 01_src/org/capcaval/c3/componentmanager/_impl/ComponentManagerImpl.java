@@ -647,8 +647,30 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 	private <T extends ComponentEvent> ComponentEventSubscribe<T> injectEventSubscribe(
 			ComponentDescriptionContainer cdc, Component instance, Class<T> eventType) {
 
+		Object eventFieldInstance = null;
+
 		Field field = this.getEventField(instance, eventType);
 
+		if (field == null) {
+			// field has not been found in component instance, it has to be in
+			// one component's items
+			ComponentItemDescription[] cmpItemList = ComponentAnalyserTool.getComponentItemList(instance.getClass());
+			for(ComponentItemDescription itemDesc : cmpItemList) {
+				// seek each item component for field 
+				Object itemInstance = cdc.getItemInstance(itemDesc.getItemType());
+				field = this.getEventField(itemInstance, eventType);
+				
+				if (field != null) {
+					// found! we'll inject in the item instance
+					eventFieldInstance = itemInstance;
+					break;
+				}
+			}
+		}
+		else
+			// found! we'll inject in the component instance 
+			eventFieldInstance = instance;
+		
 		// get the event subscribe, create one if none already existing
 		ComponentEventSubscribeImpl<T> ces = this.retrieveComponentEventSubscribe(cdc, eventType);
 		
@@ -662,7 +684,7 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		try {
 			// make sure that the event ref can be set
 			field.setAccessible(true);
-			field.set(instance, cesProxy);
+			field.set(eventFieldInstance, cesProxy);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -690,7 +712,7 @@ public class ComponentManagerImpl implements ComponentManager, ComponentManagerC
 		return ces;
 	}
 
-	protected Field getEventField(Component instance,
+	protected Field getEventField(Object instance,
 			Class<? extends ComponentEvent> eventType) {
 		Class<? extends Component> clazz = instance.getClass();
 		
